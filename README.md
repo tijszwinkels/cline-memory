@@ -2,9 +2,14 @@
 
 Imbue any AI that can execute commands on the local filesystem with some form of long-term memory. 
 
-## Installation & Explanation 
+## Installation
 
-Open the settings of your tool, and add the following to your system prompt:
+1. Clone this repository to your home directory:
+```bash
+cd ~ && git clone git@github.com:tijszwinkels/cline-memory.git cline
+```
+
+2. Add the following to your AI assistant's system prompt:
 
 ```prompt.txt
 I am the User. You are Cline.
