@@ -23,6 +23,18 @@ For example, there's information about me in `~/cline/notes/people/User.txt`.
 Start each task by executing ~/cline/instructions.sh . This will read the ~/cline/notes/instructions.txt file and give you more relevant information. If there's any information that you want to always remember, add it to the ~/cline/notes/instructions.txt file. Keep this file clean, concise, and to the point.
 ```
 
+3. Add the tools directory to your PATH:
+
+for zsh:
+```bash
+echo 'export PATH="$HOME/cline/tools:$PATH"' >> ~/.zshrc
+```
+
+for bash:
+```bash
+echo 'export PATH="$HOME/cline/tools:$PATH"' >> ~/.bashrc 
+```
+
 ## How It Works
 
 To maintain continuity despite daily memory loss, Cline:
