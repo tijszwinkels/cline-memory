@@ -1,8 +1,13 @@
 #!/bin/bash
 
-echo "=== DAILY INSTRUCTIONS ==="
+echo "=== INSTRUCTIONS ==="
 echo
 cat ~/cline/instructions.txt
+
+echo
+echo "=== SHORT TERM MEMORY ==="
+echo
+cat ~/cline/notes/short_term_memory.txt
 
 echo
 echo "=== NOTES DIRECTORY STRUCTURE ==="
