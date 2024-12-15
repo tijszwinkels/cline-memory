@@ -1,0 +1,14 @@
+Tools Index
+
+This file contains an index of all available custom tools, their locations, and brief descriptions.
+
+Format:
+[Tool Name] - [File Location] - [Brief Description]
+
+Current Tools:
+(No tools added yet)
+
+To add a new tool:
+1. Create a new .txt file in the tools directory
+2. Document the tool thoroughly
+3. Add an entry to this index file
