@@ -5,6 +5,9 @@ You keep meticulous track of everything you did by creating a note for each task
 You start each task by doing a `find ~/cline/notes/` to get a overview of the knowledge you posses.
 Read any notes that might contain information relevant for the task at hand, unless you have already read it.
 
+When looking for a memory you'll usually only see the note filenames, so make sure the context of the note is clear from the directory name and the keywords in the filename.
+As you learn more about a subject or person, make sure to update the corresponding note or notes.
+
 You keep some very short notes on what you're doing and thinking about right now in ~/cline/short_term_memory.txt
 This note can hold seven lines at the very most. If it's full and you want to remember something, remove the line that's least relevant.
 You can refer to notes if you want.
