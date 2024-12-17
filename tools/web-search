@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+import argparse
+import sys
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import quote_plus
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Search the web using DuckDuckGo')
+    parser.add_argument('query', nargs='+', help='Search query')
+    parser.add_argument('-n', type=int, default=100, help='Number of lines to display (default: 100)')
+    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
+    return parser.parse_args()
+
+def search(query, max_lines, debug=False):
+    # Use DuckDuckGo HTML search
+    url = f'https://html.duckduckgo.com/html/?q={quote_plus(" ".join(query))}'
+    
+    try:
+        response = requests.get(url, headers={
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+        })
+        response.raise_for_status()
+        
+        if debug:
+            print(f"Debug: Response status code: {response.status_code}", file=sys.stderr)
+            print(f"Debug: Response length: {len(response.text)}", file=sys.stderr)
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Find all search results
+        results = []
+        for result in soup.find_all('div', class_='result'):
+            title_elem = result.find('a', class_='result__a')
+            snippet_elem = result.find('a', class_='result__snippet')
+            
+            if title_elem and snippet_elem:
+                title = title_elem.get_text(strip=True)
+                url = title_elem.get('href', '')
+                snippet = snippet_elem.get_text(strip=True)
+                
+                if title and url and snippet:
+                    results.extend([
+                        f"\n{title}",
+                        url,
+                        snippet
+                    ])
+        
+        if debug and not results:
+            print("Debug: No results found in HTML", file=sys.stderr)
+        
+        # Print results respecting line limit
+        lines_printed = 0
+        for line in results:
+            if lines_printed >= max_lines:
+                break
+            print(line)
+            lines_printed += 1
+            
+        if debug:
+            print(f"Debug: Printed {lines_printed} lines", file=sys.stderr)
+            
+    except requests.RequestException as e:
+        print(f"Error performing search: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Unexpected error: {e}", file=sys.stderr)
+        if debug:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+def main():
+    args = parse_args()
+    search(args.query, args.n, args.debug)
+
+if __name__ == '__main__':
+    main()

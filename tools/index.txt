@@ -10,6 +10,10 @@ webpage-text - /tools/webpage-text - Extracts and displays text content from a w
     Options:
     -n LINES    Number of lines to display (default: 100)
 
+web-search - /tools/web-search - Search the web using DuckDuckGo. Usage: web-search [-n LINES] QUERY
+    Options:
+    -n LINES    Number of lines to display (default: 100)
+
 To add a new tool:
 1. Create a new .txt file in the tools directory
 2. Document the tool thoroughly
