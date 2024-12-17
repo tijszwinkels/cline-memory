@@ -6,7 +6,9 @@ Format:
 [Tool Name] - [File Location] - [Brief Description]
 
 Current Tools:
-(No tools added yet)
+webpage-text - /tools/webpage-text - Extracts and displays text content from a webpage. Usage: webpage-text [-n LINES] URL
+    Options:
+    -n LINES    Number of lines to display (default: 100)
 
 To add a new tool:
 1. Create a new .txt file in the tools directory
