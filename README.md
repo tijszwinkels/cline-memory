@@ -2,6 +2,8 @@
 
 Imbue any AI that can execute commands on the local filesystem with some form of long-term memory. 
 
+I personally use [Cline](https://github.com/cline/cline).
+
 ## Installation
 
 1. Clone this repository to your home directory:
