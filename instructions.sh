@@ -1,5 +1,9 @@
 #!/bin/bash
 
+echo "=== CURRENT DATE ==="
+date +%Y%m%d
+echo
+
 echo "=== INSTRUCTIONS ==="
 echo
 cat ~/cline/instructions.txt
