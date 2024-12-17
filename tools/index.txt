@@ -14,6 +14,11 @@ web-search - /tools/web-search - Search the web using DuckDuckGo. Usage: web-sea
     Options:
     -n LINES    Number of lines to display (default: 100)
 
+transcribe - /tools/transcribe - Transcribe audio/video files or YouTube URLs to text using OpenAI's Whisper API. Usage: transcribe [-n LINES] INPUT
+    Options:
+    -n LINES    Number of lines to display (default: 100)
+    Note: Requires OPENAI_API_KEY environment variable to be set
+
 To add a new tool:
 1. Create a new .txt file in the tools directory
 2. Document the tool thoroughly

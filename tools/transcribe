@@ -1,0 +1,141 @@
+#!/bin/bash
+
+# Usage information
+usage() {
+    echo "Usage: transcribe [-n LINES] INPUT"
+    echo "Transcribe audio/video files or YouTube URLs to text using OpenAI's Whisper API"
+    echo
+    echo "Options:"
+    echo "  -n LINES    Number of lines to display (default: 100)"
+    echo "  -h          Display this help message"
+    echo
+    echo "Input can be:"
+    echo "  - Path to an audio file (mp3, wav, m4a, etc.)"
+    echo "  - Path to a video file (mp4, mkv, etc.)"
+    echo "  - YouTube URL"
+}
+
+# Default number of lines to display
+num_lines=100
+
+# Parse command line options
+while getopts "n:h" opt; do
+    case $opt in
+        n) num_lines=$OPTARG ;;
+        h) usage; exit 0 ;;
+        \?) echo "Invalid option: -$OPTARG" >&2; usage; exit 1 ;;
+    esac
+done
+
+# Shift past the options
+shift $((OPTIND-1))
+
+# Check if input is provided
+if [ $# -eq 0 ]; then
+    echo "Error: No input provided" >&2
+    usage
+    exit 1
+fi
+
+input="$1"
+temp_dir="/tmp/transcribe_$$"
+mkdir -p "$temp_dir"
+trap 'rm -rf "$temp_dir"' EXIT
+
+# Function to check if a command exists
+check_command() {
+    if ! command -v "$1" &> /dev/null; then
+        echo "Error: $1 is required but not installed" >&2
+        exit 1
+    fi
+}
+
+# Check for required commands
+check_command curl
+check_command ffmpeg
+
+# Function to prepare audio file
+prepare_audio() {
+    local input="$1"
+    local output="$temp_dir/audio.mp3"
+    
+    echo "Converting to mp3..." >&2
+    if ! ffmpeg -i "$input" -vn -acodec libmp3lame -y "$output" 2>/dev/null; then
+        echo "Error: Failed to process audio from: $input" >&2
+        exit 1
+    fi
+    echo "$output"
+}
+
+# Function to handle YouTube URLs
+handle_youtube() {
+    local url="$1"
+    local output_file="$temp_dir/audio.mp3"
+    
+    # Check for yt-dlp
+    check_command yt-dlp
+    
+    echo "Downloading from YouTube..." >&2
+    
+    # Download audio from YouTube
+    if ! yt-dlp --quiet -x --audio-format mp3 \
+         --output "$temp_dir/audio.%(ext)s" "$url"; then
+        echo "Error: Failed to download YouTube video" >&2
+        exit 1
+    fi
+    
+    # Check if the file exists
+    if [ ! -f "$output_file" ]; then
+        echo "Error: YouTube download succeeded but audio file not found" >&2
+        ls -la "$temp_dir" >&2
+        exit 1
+    fi
+    
+    echo "$output_file"
+}
+
+# Check if input is a YouTube URL
+if [[ "$input" =~ ^https?://(www\.)?(youtube\.com|youtu\.be) ]]; then
+    echo "Detected YouTube URL" >&2
+    audio_file=$(handle_youtube "$input")
+else
+    # Handle local file
+    if [ ! -f "$input" ]; then
+        echo "Error: File not found: $input" >&2
+        exit 1
+    fi
+    audio_file=$(prepare_audio "$input")
+fi
+
+# Check if audio file exists and show its size
+if [ ! -f "$audio_file" ]; then
+    echo "Error: Audio file not found after processing" >&2
+    exit 1
+fi
+
+echo "Audio file ready: $audio_file ($(du -h "$audio_file" | cut -f1))" >&2
+
+# Check if OPENAI_API_KEY is set
+if [ -z "$OPENAI_API_KEY" ]; then
+    echo "Error: OPENAI_API_KEY environment variable is not set" >&2
+    echo "Please set it with: export OPENAI_API_KEY='your-api-key'" >&2
+    exit 1
+fi
+
+# Transcribe using Whisper API
+echo "Transcribing audio..." >&2
+response=$(curl -s -X POST https://api.openai.com/v1/audio/transcriptions \
+    -H "Authorization: Bearer $OPENAI_API_KEY" \
+    -H "Content-Type: multipart/form-data" \
+    -F file="@$audio_file" \
+    -F model="whisper-1")
+
+# Check if the API call was successful
+if [[ "$response" == *"error"* ]]; then
+    echo "Error: OpenAI API request failed" >&2
+    echo "$response" >&2
+    exit 1
+fi
+
+# Extract the transcription and format it with paragraphs
+echo "$response" | grep -o '"text": *"[^"]*"' | cut -d'"' -f4 | sed 's/\. /.\n\n/g' | head -n "$num_lines"
