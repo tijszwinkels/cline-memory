@@ -25,7 +25,7 @@ cat ~/cline/notes/short_term_memory.md
 echo
 echo "=== NOTES DIRECTORY STRUCTURE ==="
 echo
-find ~/cline/notes -type f -o -type l | grep -v '\.git/' | sort
+find ~/cline/notes/ -type f -name "*.md"
 
 echo
 echo "=== AVAILABLE TOOLS ==="
