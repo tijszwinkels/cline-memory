@@ -54,8 +54,8 @@ trap 'rm -rf "$temp_dir"' EXIT
 setup_logging() {
     local date_str=$(date +%Y%m%d)
     local time_str=$(date +%H%M%S)
-    mkdir -p "$HOME/cline/notes/transcripts/logs"
-    LOG_FILE="$HOME/cline/notes/transcripts/logs/transcribe-${date_str}-${time_str}.log"
+    mkdir -p "$HOME/cline/notes/ingest/transcripts/logs"
+    LOG_FILE="$HOME/cline/notes/ingest/transcripts/logs/transcribe-${date_str}-${time_str}.log"
     exec 2>>"$LOG_FILE"
 }
 
@@ -94,10 +94,10 @@ save_transcript() {
     fi
     
     # Create transcript file path
-    local transcript_file="$HOME/cline/notes/transcripts/${base_name}-${date_str}.txt"
+    local transcript_file="$HOME/cline/notes/ingest/transcripts/${base_name}-${date_str}.txt"
     
     # Save transcript
-    mkdir -p "$HOME/cline/notes/transcripts"
+    mkdir -p "$HOME/cline/notes/ingest/transcripts"
     echo "$transcript" > "$transcript_file"
     echo "Transcript saved: $transcript_file"
 }

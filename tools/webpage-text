@@ -4,9 +4,47 @@ import sys
 import requests
 from bs4 import BeautifulSoup
 import textwrap
+from datetime import datetime
+from pathlib import Path
+import hashlib
+from urllib.parse import urlparse
+import logging
+
+def setup_logging():
+    date_str = datetime.now().strftime('%Y%m%d-%H%M%S')
+    log_dir = Path.home() / 'cline/notes/ingest/webpages/logs'
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    log_file = log_dir / f'webpage-text-{date_str}.log'
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+
+def get_output_filename(url):
+    parsed = urlparse(url)
+    domain = parsed.netloc.replace('.', '-')
+    path_hash = hashlib.md5(parsed.path.encode()).hexdigest()[:6]
+    date_str = datetime.now().strftime('%Y%m%d')
+    return f"{domain}-{path_hash}-{date_str}.txt"
+
+def save_text(url, text):
+    output_dir = Path.home() / 'cline/notes/ingest/webpages'
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    filename = get_output_filename(url)
+    output_path = output_dir / filename
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(text)
+    
+    logging.info(f"Saved webpage text to: {output_path}")
+    return output_path
 
 def extract_text(url):
     try:
+        logging.info(f"Extracting text from: {url}")
         response = requests.get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -20,8 +58,13 @@ def extract_text(url):
         lines = (line.strip() for line in text.splitlines())
         chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
         text = '\n'.join(chunk for chunk in chunks if chunk)
+        
+        # Save the full text
+        output_path = save_text(url, text)
+        logging.info("Text extraction completed successfully")
         return text
     except Exception as e:
+        logging.error(f"Error extracting text: {str(e)}")
         print(f"Error: {str(e)}", file=sys.stderr)
         sys.exit(1)
 
@@ -31,10 +74,14 @@ def main():
     parser.add_argument('-n', type=int, default=100, help='Number of lines to display (default: 100)')
     args = parser.parse_args()
 
+    setup_logging()
+    logging.info(f"Starting webpage text extraction with args: {args}")
+    
     text = extract_text(args.url)
     lines = text.split('\n')
     
     # Only show the specified number of lines
+    print(f"\nShowing first {args.n} lines (full text saved to notes/ingest/webpages/):\n")
     for line in lines[:args.n]:
         if line.strip():  # Only print non-empty lines
             print(line)
