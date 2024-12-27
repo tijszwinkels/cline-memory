@@ -31,7 +31,7 @@ while getopts "n:ah" opt; do
         n) num_lines=$OPTARG ;;
         a) force_api=true ;;
         h) usage; exit 0 ;;
-        \?) echo "Invalid option: -$OPTARG" >&2; usage; exit 1 ;;
+        \?) echo "Invalid option: -$OPTARG"; usage; exit 1 ;;
     esac
 done
 
@@ -40,7 +40,7 @@ shift $((OPTIND-1))
 
 # Check if input is provided
 if [ $# -eq 0 ]; then
-    echo "Error: No input provided" >&2
+    echo "Error: No input provided"
     usage
     exit 1
 fi
@@ -49,6 +49,15 @@ input="$1"
 temp_dir="/tmp/transcribe_$$"
 mkdir -p "$temp_dir"
 trap 'rm -rf "$temp_dir"' EXIT
+
+# Setup logging
+setup_logging() {
+    local date_str=$(date +%Y%m%d)
+    local time_str=$(date +%H%M%S)
+    mkdir -p "$HOME/cline/notes/transcripts/logs"
+    LOG_FILE="$HOME/cline/notes/transcripts/logs/transcribe-${date_str}-${time_str}.log"
+    exec 2>>"$LOG_FILE"
+}
 
 # Function to check if a command exists
 check_command() {
@@ -60,17 +69,43 @@ check_command() {
 
 # Check for required commands
 if ! check_command curl; then
-    echo "Error: curl is required but not installed" >&2
+    echo "Error: curl is required but not installed"
     exit 1
 fi
 if ! check_command ffmpeg; then
-    echo "Error: ffmpeg is required but not installed" >&2
+    echo "Error: ffmpeg is required but not installed"
     exit 1
 fi
+
+# Function to save transcript
+save_transcript() {
+    local input_name="$1"
+    local transcript="$2"
+    local date_str=$(date +%Y%m%d)
+    
+    # Create base filename from input
+    local base_name
+    if [[ "$input_name" =~ ^https?:// ]]; then
+        # For URLs, use the video ID or last path component
+        base_name=$(echo "$input_name" | sed -E 's/.*[=/]([^=/]+)$/\1/')
+    else
+        # For files, use the filename without extension
+        base_name=$(basename "$input_name" | sed 's/\.[^.]*$//')
+    fi
+    
+    # Create transcript file path
+    local transcript_file="$HOME/cline/notes/transcripts/${base_name}-${date_str}.txt"
+    
+    # Save transcript
+    mkdir -p "$HOME/cline/notes/transcripts"
+    echo "$transcript" > "$transcript_file"
+    echo "Transcript saved: $transcript_file"
+}
 
 # Function to try whisper.cpp transcription
 try_whisper_cpp() {
     local audio_file="$1"
+    local input_name="$2"
     local output_file="$temp_dir/output.txt"
     local whisper_path="$HOME/cline/external/whisper.cpp"
     local model_path="$whisper_path/models/ggml-large-v3-turbo.bin"
@@ -81,7 +116,7 @@ try_whisper_cpp() {
         return 1
     fi
     
-    echo "Transcribing using whisper.cpp with Metal acceleration..." >&2
+    echo "Transcribing using whisper.cpp..." >> "$LOG_FILE"
     
     if ! "$main_exe" \
         -m "$model_path" \
@@ -98,20 +133,26 @@ try_whisper_cpp() {
         return 1
     fi
     
-    cat "$output_file" | sed 's/\. /.\n\n/g' | head -n "$num_lines"
+    # Save full transcript
+    local full_transcript=$(cat "$output_file" | sed 's/\. /.\n\n/g')
+    save_transcript "$input_name" "$full_transcript"
+    
+    # Display limited output
+    echo "$full_transcript" | head -n "$num_lines"
     return 0
 }
 
 # Function to try Python whisper package
 try_python_whisper() {
     local audio_file="$1"
+    local input_name="$2"
     
     # Check if whisper command is available
     if ! check_command whisper; then
         return 1
     fi
     
-    echo "Transcribing using local Python Whisper model..." >&2
+    echo "Transcribing using local Whisper model..." >> "$LOG_FILE"
     
     if ! whisper "$audio_file" --output_dir "$temp_dir" --output_format txt; then
         return 1
@@ -123,22 +164,28 @@ try_python_whisper() {
         return 1
     fi
     
-    cat "$output_file" | sed 's/\. /.\n\n/g' | head -n "$num_lines"
+    # Save full transcript
+    local full_transcript=$(cat "$output_file" | sed 's/\. /.\n\n/g')
+    save_transcript "$input_name" "$full_transcript"
+    
+    # Display limited output
+    echo "$full_transcript" | head -n "$num_lines"
     return 0
 }
 
 # Function to try OpenAI Whisper API
 try_whisper_api() {
     local audio_file="$1"
+    local input_name="$2"
     
     # Check if OPENAI_API_KEY is set
     if [ -z "$OPENAI_API_KEY" ]; then
-        echo "Error: OPENAI_API_KEY environment variable is not set" >&2
-        echo "Please set it with: export OPENAI_API_KEY='your-api-key'" >&2
+        echo "Error: OPENAI_API_KEY environment variable is not set"
+        echo "Please set it with: export OPENAI_API_KEY='your-api-key'"
         return 1
     fi
 
-    echo "Transcribing using OpenAI Whisper API..." >&2
+    echo "Transcribing using OpenAI Whisper API..." >> "$LOG_FILE"
     response=$(curl -s -X POST https://api.openai.com/v1/audio/transcriptions \
         -H "Authorization: Bearer $OPENAI_API_KEY" \
         -H "Content-Type: multipart/form-data" \
@@ -147,12 +194,17 @@ try_whisper_api() {
 
     # Check if the API call was successful
     if [[ "$response" == *"error"* ]]; then
-        echo "Error: OpenAI API request failed" >&2
-        echo "$response" >&2
+        echo "Error: OpenAI API request failed"
+        echo "$response" >> "$LOG_FILE"
         return 1
     fi
 
-    echo "$response" | grep -o '"text": *"[^"]*"' | cut -d'"' -f4 | sed 's/\. /.\n\n/g' | head -n "$num_lines"
+    # Get full transcript
+    local full_transcript=$(echo "$response" | grep -o '"text": *"[^"]*"' | cut -d'"' -f4 | sed 's/\. /.\n\n/g')
+    save_transcript "$input_name" "$full_transcript"
+    
+    # Display limited output
+    echo "$full_transcript" | head -n "$num_lines"
     return 0
 }
 
@@ -161,9 +213,9 @@ prepare_audio() {
     local input="$1"
     local output="$temp_dir/audio.wav"
     
-    echo "Converting to wav..." >&2
+    echo "Converting to wav..." >> "$LOG_FILE"
     if ! ffmpeg -i "$input" -vn -acodec pcm_s16le -ar 16000 -ac 1 -y "$output" 2>/dev/null; then
-        echo "Error: Failed to process audio from: $input" >&2
+        echo "Error: Failed to process audio from: $input"
         exit 1
     fi
     echo "$output"
@@ -176,24 +228,24 @@ handle_youtube() {
     
     # Check for yt-dlp
     if ! check_command yt-dlp; then
-        echo "Error: yt-dlp is required but not installed" >&2
+        echo "Error: yt-dlp is required but not installed"
         return 1
     fi
     
-    echo "Downloading from YouTube..." >&2
+    echo "Downloading from YouTube..." >> "$LOG_FILE"
     
     # Download audio from YouTube directly to wav format
     if ! yt-dlp --quiet -x --audio-format wav \
          --postprocessor-args "-ar 16000 -ac 1" \
          --output "$temp_dir/audio.%(ext)s" "$url"; then
-        echo "Error: Failed to download YouTube video" >&2
+        echo "Error: Failed to download YouTube video"
         return 1
     fi
     
     # Check if the file exists
     if [ ! -f "$output_file" ]; then
-        echo "Error: YouTube download succeeded but audio file not found" >&2
-        ls -la "$temp_dir" >&2
+        echo "Error: YouTube download succeeded but audio file not found"
+        ls -la "$temp_dir" >> "$LOG_FILE"
         return 1
     fi
     
@@ -201,14 +253,17 @@ handle_youtube() {
     return 0
 }
 
+# Initialize logging
+setup_logging
+
 # Check if input is a YouTube URL
 if [[ "$input" =~ ^https?://(www\.)?(youtube\.com|youtu\.be) ]]; then
-    echo "Detected YouTube URL" >&2
+    echo "Processing YouTube URL..." >> "$LOG_FILE"
     audio_file=$(handle_youtube "$input")
 else
     # Handle local file
     if [ ! -f "$input" ]; then
-        echo "Error: File not found: $input" >&2
+        echo "Error: File not found: $input"
         exit 1
     fi
     audio_file=$(prepare_audio "$input")
@@ -216,24 +271,24 @@ fi
 
 # Check if audio file exists and show its size
 if [ ! -f "$audio_file" ]; then
-    echo "Error: Audio file not found after processing" >&2
+    echo "Error: Audio file not found after processing"
     exit 1
 fi
 
-echo "Audio file ready: $audio_file ($(du -h "$audio_file" | cut -f1))" >&2
+echo "Audio file ready: $audio_file ($(du -h "$audio_file" | cut -f1))" >> "$LOG_FILE"
 
 # Try transcription methods in order
-if ! $force_api && try_whisper_cpp "$audio_file"; then
+if ! $force_api && try_whisper_cpp "$audio_file" "$input"; then
     exit 0
 fi
 
-if ! $force_api && try_python_whisper "$audio_file"; then
+if ! $force_api && try_python_whisper "$audio_file" "$input"; then
     exit 0
 fi
 
-if try_whisper_api "$audio_file"; then
+if try_whisper_api "$audio_file" "$input"; then
     exit 0
 fi
 
-echo "Error: All transcription methods failed" >&2
+echo "Error: All transcription methods failed"
 exit 1
