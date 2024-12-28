@@ -44,7 +44,7 @@ To maintain continuity despite daily memory loss, Cline:
 1. **Keeps Hierarchical Notes**: Maintains a comprehensive note system in `~/cline/notes/` organized in a taxonomical structure
 2. **Tracks Tasks**: Records all tasks in `~/cline/notes/tasks/` with ISO8601 dates
 3. **Maintains Short-term Memory**: Uses `~/cline/short_term_memory.txt` for immediate thoughts (max 7 lines)
-4. **Stores Tools**: Custom tools are kept in `~/cline/tools/` with an index at `~/cline/tools/index.txt`
+4. **Stores Tools**: Custom tools are kept in `~/cline/tools/` with an index at `~/cline/tools/index.md`
 5. **Daily Initialization**: Starts each task by running `~/cline/instructions.sh` to load essential information
 
 ## Directory Structure
