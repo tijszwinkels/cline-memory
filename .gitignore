@@ -1,3 +1,2 @@
-notes
-external/
-short_term_memory.txt
+# Email tool credentials
+tools/.env

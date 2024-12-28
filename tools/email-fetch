@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+import argparse
+import imaplib
+import email
+import os
+import sys
+from datetime import datetime, timedelta
+from email.header import decode_header
+import json
+import getpass
+from pathlib import Path
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    print("Installing required package: python-dotenv")
+    os.system('pip install python-dotenv')
+    from dotenv import load_dotenv
+
+def parse_date(date_str):
+    """Parse date string in YYYY-MM-DD format"""
+    try:
+        return datetime.strptime(date_str, '%Y-%m-%d')
+    except ValueError:
+        print(f"Error: Invalid date format. Please use YYYY-MM-DD")
+        sys.exit(1)
+
+def decode_email_header(header):
+    """Decode email header"""
+    decoded_parts = decode_header(header)
+    decoded_str = ''
+    for part, encoding in decoded_parts:
+        if isinstance(part, bytes):
+            decoded_str += part.decode(encoding or 'utf-8', errors='replace')
+        else:
+            decoded_str += part
+    return decoded_str
+
+def get_credentials():
+    """Get email credentials from .env file, environment variables, or prompt"""
+    # Try to load from .env file in the same directory as the script
+    script_dir = Path(__file__).parent
+    env_file = script_dir / '.env'
+    
+    if env_file.exists():
+        load_dotenv(env_file)
+    
+    # Try environment variables
+    email = os.getenv('EMAIL_USER')
+    password = os.getenv('EMAIL_PASS')
+    server = os.getenv('EMAIL_SERVER', 'imap.gmail.com')
+    
+    # Prompt if not found
+    if not email:
+        email = input("Email: ")
+    if not password:
+        password = getpass.getpass("Password: ")
+        
+    return email, password, server
+
+def fetch_emails(args):
+    """Fetch and filter emails"""
+    email_user, email_pass, imap_server = get_credentials()
+    
+    try:
+        # Connect to IMAP server
+        mail = imaplib.IMAP4_SSL(imap_server)
+        mail.login(email_user, email_pass)
+        mail.select('inbox')
+        
+        # Build search criteria
+        search_criteria = []
+        if args.since:
+            date_since = parse_date(args.since)
+            search_criteria.append(f'SINCE {date_since.strftime("%d-%b-%Y")}')
+        
+        # Search emails
+        search_query = ' '.join(search_criteria) if search_criteria else 'ALL'
+        _, messages = mail.search(None, search_query)
+        
+        # Process emails
+        emails = []
+        for num in messages[0].split()[::-1]:  # Reverse to get newest first
+            _, msg = mail.fetch(num, '(RFC822)')
+            email_body = msg[0][1]
+            email_message = email.message_from_bytes(email_body)
+            
+            subject = decode_email_header(email_message['subject'])
+            from_addr = decode_email_header(email_message['from'])
+            date = email_message['date']
+            
+            # Apply subject filter if specified
+            if args.subject and args.subject.lower() not in subject.lower():
+                continue
+                
+            emails.append({
+                'subject': subject,
+                'from': from_addr,
+                'date': date
+            })
+            
+            # Check if we've reached the limit
+            if args.n and len(emails) >= args.n:
+                break
+        
+        # Output results
+        for email_data in emails:
+            print(f"From: {email_data['from']}")
+            print(f"Date: {email_data['date']}")
+            print(f"Subject: {email_data['subject']}")
+            print("-" * 60)
+            
+    except imaplib.IMAP4.error as e:
+        print(f"IMAP error: {e}")
+        sys.exit(1)
+    finally:
+        try:
+            mail.close()
+            mail.logout()
+        except:
+            pass
+
+def main():
+    parser = argparse.ArgumentParser(description='Fetch and filter emails')
+    parser.add_argument('-n', type=int, default=100,
+                      help='Number of emails to display (default: 100)')
+    parser.add_argument('--since', type=str,
+                      help='Show emails since date (YYYY-MM-DD)')
+    parser.add_argument('--subject', type=str,
+                      help='Filter emails by subject text')
+    
+    args = parser.parse_args()
+    fetch_emails(args)
+
+if __name__ == '__main__':
+    main()
