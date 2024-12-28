@@ -58,6 +58,31 @@ def get_credentials():
         
     return email, password, server
 
+def ensure_attachment_dir():
+    """Ensure the attachment directory exists"""
+    attachment_dir = Path.home() / 'cline' / 'tmp' / 'email_attachments'
+    attachment_dir.mkdir(parents=True, exist_ok=True)
+    return attachment_dir
+
+def save_attachment(part, email_id, attachment_dir):
+    """Save an email attachment to disk"""
+    filename = part.get_filename()
+    if not filename:
+        return None
+    
+    # Clean filename and add email ID to make it unique
+    clean_filename = ''.join(c for c in filename if c.isalnum() or c in '._- ')
+    unique_filename = f"{email_id}_{clean_filename}"
+    file_path = attachment_dir / unique_filename
+    
+    try:
+        with open(file_path, 'wb') as f:
+            f.write(part.get_payload(decode=True))
+        return file_path
+    except Exception as e:
+        print(f"Error saving attachment {filename}: {e}")
+        return None
+
 def fetch_emails(args):
     """Fetch and filter emails"""
     email_user, email_pass, imap_server = get_credentials()
@@ -116,39 +141,53 @@ def fetch_emails(args):
             date = email_message['date']
             to_addr = decode_email_header(email_message['to'])
                 
-            # Get email body
+            # Get email body and handle attachments
             body = ""
+            attachments = []
+            
+            if args.files:
+                attachment_dir = ensure_attachment_dir()
+            
             if email_message.is_multipart():
                 for part in email_message.walk():
-                    if part.get_content_type() == "text/plain":
+                    content_type = part.get_content_type()
+                    
+                    if content_type == "text/plain":
                         try:
                             body = part.get_payload(decode=True).decode()
-                            break
                         except:
                             continue
-                    elif part.get_content_type() == "text/html":
+                    elif content_type == "text/html" and not body:
                         try:
-                            # Only use HTML if we haven't found plain text
-                            if not body:
-                                import html2text
-                                h = html2text.HTML2Text()
-                                h.ignore_links = False
-                                body = h.handle(part.get_payload(decode=True).decode())
+                            import html2text
+                            h = html2text.HTML2Text()
+                            h.ignore_links = False
+                            body = h.handle(part.get_payload(decode=True).decode())
                         except:
                             continue
+                    elif args.files and part.get_filename():
+                        # Save attachment if --files flag is set
+                        saved_path = save_attachment(part, num.decode(), attachment_dir)
+                        if saved_path:
+                            attachments.append(saved_path)
             else:
                 try:
                     body = email_message.get_payload(decode=True).decode()
                 except:
                     body = email_message.get_payload()
 
-            emails.append({
+            email_data = {
                 'subject': subject,
                 'from': from_addr,
                 'to': to_addr,
                 'date': date,
                 'body': body.strip() if body else "No text content available"
-            })
+            }
+            
+            if attachments:
+                email_data['attachments'] = attachments
+                
+            emails.append(email_data)
         
         print("\n")  # Clear progress line
         
@@ -160,6 +199,12 @@ def fetch_emails(args):
             print(f"Subject: {email_data['subject']}")
             print("\nContent:")
             print(email_data['body'])
+            
+            if 'attachments' in email_data:
+                print("\nAttachments saved:")
+                for attachment in email_data['attachments']:
+                    print(f"- {attachment}")
+                    
             print("\n" + "=" * 80 + "\n")
             
     except imaplib.IMAP4.error as e:
@@ -189,6 +234,8 @@ def main():
                       help='Show emails since date (YYYY-MM-DD). Defaults to last 30 days.')
     parser.add_argument('--search', type=str,
                       help='Search in subject, from, and to fields')
+    parser.add_argument('--files', action='store_true',
+                      help='Download email attachments to ~/cline/tmp/email_attachments/')
     
     args = parser.parse_args()
     fetch_emails(args)

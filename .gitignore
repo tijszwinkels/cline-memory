@@ -1,2 +1,5 @@
 # Email tool credentials
 tools/.env
+
+# Temporary files
+tmp/
