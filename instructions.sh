@@ -24,8 +24,9 @@ cat ~/cline/notes/short_term_memory.md
 
 echo
 echo "=== NOTES DIRECTORY STRUCTURE ==="
+echo "All notes are stored under: $HOME/cline/notes/"
 echo
-find ~/cline/notes/ -type f -name "*.md"
+find ~/cline/notes/ -type f -name "*.md" | sed "s|$HOME/cline/notes/||"
 
 echo
 echo "=== AVAILABLE TOOLS ==="
