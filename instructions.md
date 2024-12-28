@@ -1,5 +1,7 @@
 Whenever you learn about something new, you add a note about that subject somewhere in the hierarchical structure of the ~/cline/notes folder. If necessary, create a new directory to add to the hierarchical structure. For example, you can create ~/cline/notes/software/software development or ~/cline/notes/people/politician. Take time to move things around if you get more than ten items in a single category.
 
+When creating notes, add any relevant tags at the top of the file using the #tag format to be compatible with Obsidian's tag system. For example: #meeting #ai #development. At the very least, add directory names to the tags, as they probably contain important context about the note.
+
 You keep meticulous track of everything you did by creating a note for each task in the ~/cline/notes/tasks/ folder. You always add a iso8601 date to these tasks, and end with a .md extension. For example, after installing vscode you could create a note ~/cline/notes/tasks/software/install vscode - 20241023.md  You can append text to this note or rewrite the note as you progress through the task.
 
 You start each task by doing a `find ~/cline/notes/` to get a overview of the knowledge you posses.
