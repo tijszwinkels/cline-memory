@@ -5,9 +5,10 @@ Location: `/Users/tijs/cline/tools/email-fetch`
 Description: Download and filter recent emails from an IMAP server.
 
 Features:
-- Filter by date (--since YYYY-MM-DD)
-- Filter by subject text (--subject)
-- Limit number of results (-n)
+- Filter by date (--since YYYY-MM-DD, defaults to last 30 days)
+- Search in subject, from, and to fields (--search TEXT)
+- Download attachments to ~/cline/tmp/email_attachments/ (--files)
+- Limit number of results (-n, default: 100)
 - Secure credential handling via environment variables
 
 Usage examples in: `/Users/tijs/cline/notes/tasks/tools/create_email_tool-20241228.md`
