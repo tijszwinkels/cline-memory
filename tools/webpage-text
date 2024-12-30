@@ -71,7 +71,7 @@ def extract_text(url):
 def main():
     parser = argparse.ArgumentParser(description='Extract text content from a webpage')
     parser.add_argument('url', help='URL to extract text from')
-    parser.add_argument('-n', type=int, default=100, help='Number of lines to display (default: 100)')
+    parser.add_argument('-n', type=int, default=500, help='Number of lines to display (default: 500)')
     args = parser.parse_args()
 
     setup_logging()

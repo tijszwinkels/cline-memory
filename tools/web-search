@@ -8,7 +8,7 @@ from urllib.parse import quote_plus
 def parse_args():
     parser = argparse.ArgumentParser(description='Search the web using DuckDuckGo')
     parser.add_argument('query', nargs='+', help='Search query')
-    parser.add_argument('-n', type=int, default=100, help='Number of lines to display (default: 100)')
+    parser.add_argument('-n', type=int, default=500, help='Number of lines to display (default: 500)')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
     return parser.parse_args()
 
