@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Simple "poor man's trash" utility that moves files to a designated trash directory
+# with timestamps to avoid name collisions
+
+TRASH_DIR="$HOME/cline/.Trash"
+
+# Show usage if no arguments provided
+if [ $# -eq 0 ]; then
+    echo "Usage: trash [-n NUM] <file1> [file2 ...]"
+    echo ""
+    echo "Options:"
+    echo "  -n NUM    Number of files to show in trash directory after moving (default: 10)"
+    exit 1
+fi
+
+# Parse options
+num_files=10
+while getopts "n:" opt; do
+    case $opt in
+        n) num_files=$OPTARG ;;
+        \?) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
+    esac
+done
+shift $((OPTIND-1))
+
+# Check if we have any files to process after option parsing
+if [ $# -eq 0 ]; then
+    echo "Error: No files specified"
+    echo "Usage: trash [-n NUM] <file1> [file2 ...]"
+    exit 1
+fi
+
+# Create trash directory if it doesn't exist
+mkdir -p "$TRASH_DIR"
+
+# Move each file to trash with timestamp
+for file in "$@"; do
+    if [ -e "$file" ]; then
+        timestamp=$(date +%Y%m%d_%H%M%S)
+        filename=$(basename "$file")
+        mv "$file" "$TRASH_DIR/${filename}_${timestamp}"
+        echo "Moved '$file' to trash"
+    else
+        echo "Warning: '$file' does not exist" >&2
+    fi
+done
+
+# Show recent files in trash
+echo -e "\nMost recent files in trash:"
+ls -lt "$TRASH_DIR" | head -n "$((num_files + 1))"

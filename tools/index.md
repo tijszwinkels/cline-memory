@@ -38,6 +38,14 @@ Options:
 - `-n LINES`: Number of lines to display (default: 100)
 - `-a`: Use OpenAI API mode (requires OPENAI_API_KEY environment variable)
 
+## trash
+Location: `/tools/trash`
+Description: Simple "poor man's trash" utility that moves files to a designated trash directory (~/cline/.Trash) with timestamps.
+
+Usage: `trash [-n NUM] <file1> [file2 ...]`
+Options:
+- `-n NUM`: Number of files to show in trash directory after moving (default: 10)
+
 ## Adding New Tools
 1. Create a new tool implementation in the tools directory
 2. Document the tool thoroughly
